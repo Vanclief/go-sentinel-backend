@@ -42,7 +42,8 @@ func (h *Handler) OnPublish(_ *rtmp.StreamContext, timestamp uint32, cmd *rtmpms
 
 	// (example) Reject a connection when PublishingName is empty
 	if cmd.PublishingName == "" {
-		return errors.New("PublishingName is empty")
+		cmd.PublishingName = "live"
+		// return errors.New("PublishingName is empty")
 	}
 
 	// Record streams as FLV!
@@ -89,34 +90,34 @@ func (h *Handler) OnSetDataFrame(timestamp uint32, data *rtmpmsg.NetStreamSetDat
 }
 
 func (h *Handler) OnAudio(timestamp uint32, payload io.Reader) error {
-	var audio flvtag.AudioData
-	if err := flvtag.DecodeAudioData(payload, &audio); err != nil {
-		return err
-	}
+	// var audio flvtag.AudioData
+	// if err := flvtag.DecodeAudioData(payload, &audio); err != nil {
+	// 	return err
+	// }
 
-	flvBody := new(bytes.Buffer)
-	if _, err := io.Copy(flvBody, audio.Data); err != nil {
-		return err
-	}
-	audio.Data = flvBody
+	// flvBody := new(bytes.Buffer)
+	// if _, err := io.Copy(flvBody, audio.Data); err != nil {
+	// 	return err
+	// }
+	// audio.Data = flvBody
 
-	log.Printf("FLV Audio Data: Timestamp = %d, SoundFormat = %+v, SoundRate = %+v, SoundSize = %+v, SoundType = %+v, AACPacketType = %+v, Data length = %+v",
-		timestamp,
-		audio.SoundFormat,
-		audio.SoundRate,
-		audio.SoundSize,
-		audio.SoundType,
-		audio.AACPacketType,
-		len(flvBody.Bytes()),
-	)
+	// log.Printf("FLV Audio Data: Timestamp = %d, SoundFormat = %+v, SoundRate = %+v, SoundSize = %+v, SoundType = %+v, AACPacketType = %+v, Data length = %+v",
+	// 	timestamp,
+	// 	audio.SoundFormat,
+	// 	audio.SoundRate,
+	// 	audio.SoundSize,
+	// 	audio.SoundType,
+	// 	audio.AACPacketType,
+	// 	len(flvBody.Bytes()),
+	// )
 
-	if err := h.flvEnc.Encode(&flvtag.FlvTag{
-		TagType:   flvtag.TagTypeAudio,
-		Timestamp: timestamp,
-		Data:      &audio,
-	}); err != nil {
-		log.Printf("Failed to write audio: Err = %+v", err)
-	}
+	// if err := h.flvEnc.Encode(&flvtag.FlvTag{
+	// 	TagType:   flvtag.TagTypeAudio,
+	// 	Timestamp: timestamp,
+	// 	Data:      &audio,
+	// }); err != nil {
+	// 	log.Printf("Failed to write audio: Err = %+v", err)
+	// }
 
 	return nil
 }
