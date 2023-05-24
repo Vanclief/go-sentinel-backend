@@ -13,7 +13,7 @@ import (
 
 func main() {
 	// open and decode image file
-	file, err := os.Open("barcode.png")
+	file, err := os.Open("qr.png")
 	if err != nil {
 		panic(err)
 	}
@@ -39,4 +39,26 @@ func main() {
 	}
 
 	fmt.Println(result)
+
+	// hints := make(map[gozxing.DecodeHintType]interface{})
+	// possibleFormats := []gozxing.BarcodeFormat{
+	// 	gozxing.BarcodeFormat_EAN_13,
+	// 	gozxing.BarcodeFormat_EAN_8,
+	// 	gozxing.BarcodeFormat_UPC_A,
+	// 	gozxing.BarcodeFormat_UPC_E,
+	// 	gozxing.BarcodeFormat_CODE_39,
+	// 	gozxing.BarcodeFormat_CODE_93,
+	// 	gozxing.BarcodeFormat_CODE_128,
+	// }
+	//
+	// hints[gozxing.DecodeHintType_POSSIBLE_FORMATS] = possibleFormats
+
+	// onedReader := oned.NewMultiFormatUPCEANReader(hints)
+	// onedReader := oned.NewMultiFormatUPCEANReader(nil)
+	// res2, err := onedReader.DecodeWithoutHints(bmp)
+	// if err != nil {
+	// 	fmt.Println("OnedReader Error", err)
+	// }
+	//
+	// fmt.Println(res2)
 }
