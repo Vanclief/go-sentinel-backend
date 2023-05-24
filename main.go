@@ -8,12 +8,12 @@ import (
 	"os"
 
 	"github.com/makiuchi-d/gozxing"
-	"github.com/makiuchi-d/gozxing/qrcode"
+	"github.com/makiuchi-d/gozxing/multi/qrcode"
 )
 
 func main() {
 	// open and decode image file
-	file, err := os.Open("qr.png")
+	file, err := os.Open("barcode.png")
 	if err != nil {
 		panic(err)
 	}
@@ -32,11 +32,10 @@ func main() {
 	}
 
 	// decode image
-	qrReader := qrcode.NewQRCodeReader()
-	result, err := qrReader.Decode(bmp, nil)
+	qrReader := qrcode.NewQRCodeMultiReader()
+	result, err := qrReader.DecodeMultipleWithoutHint(bmp)
 	if err != nil {
-		fmt.Println("QRReader")
-		panic(err)
+		fmt.Println("QRReader Error", err)
 	}
 
 	fmt.Println(result)
