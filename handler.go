@@ -13,6 +13,12 @@ import (
 	flvtag "github.com/yutopp/go-flv/tag"
 	"github.com/yutopp/go-rtmp"
 	rtmpmsg "github.com/yutopp/go-rtmp/message"
+
+	"image"
+	"image/color"
+
+	"github.com/makiuchi-d/gozxing"
+	"github.com/makiuchi-d/gozxing/qrcode"
 )
 
 var _ rtmp.Handler = (*Handler)(nil)
@@ -143,13 +149,36 @@ func (h *Handler) OnVideo(timestamp uint32, payload io.Reader) error {
 		len(flvBody.Bytes()),
 	)
 
-	if err := h.flvEnc.Encode(&flvtag.FlvTag{
-		TagType:   flvtag.TagTypeVideo,
-		Timestamp: timestamp,
-		Data:      &video,
-	}); err != nil {
-		log.Printf("Failed to write video: Err = %+v", err)
+	// Assuming that you've decoded the frame into an image.Image instance here
+	// Replace the below dummy image with actual image frame
+	img := image.NewRGBA(image.Rect(0, 0, 100, 100))
+	for y := 0; y < img.Bounds().Dy(); y++ {
+		for x := 0; x < img.Bounds().Dx(); x++ {
+			img.Set(x, y, color.RGBA{uint8(x % 256), uint8(y % 256), uint8((x * y) % 256), 255})
+		}
 	}
+
+	// Initialize a binary bitmap
+	bmp, _ := gozxing.NewBinaryBitmapFromImage(img)
+
+	// Initialize a QR code reader
+	qrReader := qrcode.NewQRCodeReader()
+
+	// Try to decode the bitmap into a QR code
+	result, _ := qrReader.Decode(bmp, nil)
+
+	// If a QR code is found, do something with the result
+	if result != nil {
+		fmt.Printf("Found QR Code: %s\n", result.GetText())
+	}
+
+	// if err := h.flvEnc.Encode(&flvtag.FlvTag{
+	// 	TagType:   flvtag.TagTypeVideo,
+	// 	Timestamp: timestamp,
+	// 	Data:      &video,
+	// }); err != nil {
+	// 	log.Printf("Failed to write video: Err = %+v", err)
+	// }
 
 	return nil
 }
