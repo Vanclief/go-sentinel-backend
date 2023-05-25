@@ -4,13 +4,14 @@ import (
 	"fmt"
 	"image"
 	_ "image/png"
+	"io/ioutil"
 	"os"
+	"time"
 
 	"github.com/makiuchi-d/gozxing"
 	"github.com/makiuchi-d/gozxing/multi/qrcode"
 
 	"log"
-	"os/exec"
 	"path/filepath"
 	"strings"
 
@@ -19,7 +20,28 @@ import (
 
 func main() {
 	// scan_image("./tmp/frame_3.png")
-	watch()
+	// watch()
+	ticker := time.NewTicker(500 * time.Millisecond)
+	for range ticker.C {
+		scanDir("./tmp/")
+	}
+}
+
+func scanDir(dir string) {
+	files, err := ioutil.ReadDir(dir)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	for _, f := range files {
+		path := filepath.Join(dir, f.Name())
+		if f.IsDir() || !isImage(path) {
+			continue
+		}
+
+		fmt.Println("Scan:", path)
+		go scan_image(path)
+	}
 }
 
 func watch() {
@@ -66,15 +88,9 @@ func isImage(path string) bool {
 	return ext == ".png" || ext == ".jpg" || ext == ".jpeg" || ext == ".gif"
 }
 
-func openImage(path string) {
-	cmd := exec.Command("open", path)
-	err := cmd.Run()
-	if err != nil {
-		log.Printf("Error opening image: %v", err)
-	}
-}
-
 func scan_image(path string) {
+
+	defer os.Remove(path)
 
 	// fmt.Println("path", path)
 
