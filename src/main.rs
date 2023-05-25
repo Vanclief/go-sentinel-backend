@@ -1,4 +1,8 @@
+use rodio::{source::Source, Decoder, OutputStream};
 use std::fs;
+use std::fs::File;
+use std::io::BufReader;
+use std::sync::mpsc;
 use std::thread;
 use std::time::Duration;
 
@@ -7,15 +11,25 @@ use rxing;
 fn main() {
     let dir_path = "./tmp";
 
+    let (_stream, stream_handle) = OutputStream::try_default().unwrap();
+    let file = BufReader::new(File::open("sounds/beep.mp3").unwrap());
+    let source = Decoder::new(file).unwrap();
+    stream_handle.play_raw(source.convert_samples()).unwrap();
+    let (tx, rx) = mpsc::channel();
+
     println!("Scanning directory: {}", dir_path);
 
     loop {
-        scan_directory(dir_path);
+        scan_directory(dir_path, tx.clone());
         thread::sleep(Duration::from_millis(500));
+
+        for received in rx.try_iter() {
+            println!("Received: {}", received);
+        }
     }
 }
 
-fn scan_directory(dir_path: &str) -> Result<(), std::io::Error> {
+fn scan_directory(dir_path: &str, tx: mpsc::Sender<String>) -> Result<(), std::io::Error> {
     let mut handles = vec![];
     let entries = fs::read_dir(dir_path)?;
 
@@ -32,9 +46,12 @@ fn scan_directory(dir_path: &str) -> Result<(), std::io::Error> {
                 match path.to_str() {
                     Some(file_name) => {
                         let file_name = file_name.to_owned();
+                        let thread_tx = tx.clone();
+
                         let handle = thread::spawn(move || {
                             detect_barcodes(&file_name);
                             fs::remove_file(&file_name).expect("Failed to remove file");
+                            thread_tx.send(file_name).unwrap();
                         });
                         handles.push(handle);
                     }
@@ -67,5 +84,4 @@ fn print_results(results: Vec<rxing::RXingResult>) {
 
 fn print_result(result: rxing::RXingResult) {
     println!("{} -> {}", result.getBarcodeFormat(), result.getText());
-    print!("\x07");
 }
