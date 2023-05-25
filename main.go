@@ -14,8 +14,6 @@ import (
 	"log"
 	"path/filepath"
 	"strings"
-
-	"github.com/fsnotify/fsnotify"
 )
 
 func main() {
@@ -39,49 +37,51 @@ func scanDir(dir string) {
 			continue
 		}
 
-		fmt.Println("Scan:", path)
-		go scan_image(path)
+		start := time.Now()
+		scan_image(path)
+		elapsed := time.Since(start)
+		fmt.Println("Scanned:", path, "in", elapsed)
 	}
 }
 
-func watch() {
-	watcher, err := fsnotify.NewWatcher()
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer watcher.Close()
+// func watch() {
+// 	watcher, err := fsnotify.NewWatcher()
+// 	if err != nil {
+// 		log.Fatal(err)
+// 	}
+// 	defer watcher.Close()
 
-	done := make(chan bool)
-	go func() {
-		for {
-			select {
-			case event, ok := <-watcher.Events:
-				if !ok {
-					return
-				}
+// 	done := make(chan bool)
+// 	go func() {
+// 		for {
+// 			select {
+// 			case event, ok := <-watcher.Events:
+// 				if !ok {
+// 					return
+// 				}
 
-				if event.Op&fsnotify.Create == fsnotify.Create || event.Op&fsnotify.Write == fsnotify.Write {
-					if isImage(event.Name) {
-						fmt.Println("Scan:", event.Name)
-						scan_image(event.Name)
-						os.Remove(event.Name)
-					}
-				}
-			case err, ok := <-watcher.Errors:
-				if !ok {
-					return
-				}
-				log.Println("error:", err)
-			}
-		}
-	}()
+// 				if event.Op&fsnotify.Create == fsnotify.Create || event.Op&fsnotify.Write == fsnotify.Write {
+// 					if isImage(event.Name) {
+// 						fmt.Println("Scan:", event.Name)
+// 						scan_image(event.Name)
+// 						os.Remove(event.Name)
+// 					}
+// 				}
+// 			case err, ok := <-watcher.Errors:
+// 				if !ok {
+// 					return
+// 				}
+// 				log.Println("error:", err)
+// 			}
+// 		}
+// 	}()
 
-	err = watcher.Add("./tmp/")
-	if err != nil {
-		log.Fatal(err)
-	}
-	<-done
-}
+// 	err = watcher.Add("./tmp/")
+// 	if err != nil {
+// 		log.Fatal(err)
+// 	}
+// 	<-done
+// }
 
 func isImage(path string) bool {
 	ext := strings.ToLower(filepath.Ext(path))
