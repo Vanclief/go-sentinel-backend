@@ -12,11 +12,15 @@ fn main() {
 
     loop {
         scan_directory(dir_path);
-        thread::sleep(Duration::from_millis(100));
+        thread::sleep(Duration::from_millis(500));
     }
 }
 
 fn scan_directory(dir_path: &str) -> Result<(), std::io::Error> {
+    let mut handles = vec![];
+    let now = Instant::now();
+    let mut count = 0;
+
     let entries = fs::read_dir(dir_path)?;
 
     for entry in entries {
@@ -27,21 +31,31 @@ fn scan_directory(dir_path: &str) -> Result<(), std::io::Error> {
             continue;
         }
 
+        count += 1;
+
         if let Some(extension) = path.extension() {
             if ["jpg", "jpeg", "png", "gif"].contains(&extension.to_str().unwrap_or_default()) {
                 match path.to_str() {
                     Some(file_name) => {
-                        let now = Instant::now();
-                        detect_barcodes(file_name);
-                        let elapsed = now.elapsed();
-                        println!("Scanned file: {} took {:.2?}", file_name, elapsed);
-                        fs::remove_file(file_name)?;
+                        let file_name = file_name.to_owned();
+                        let handle = thread::spawn(move || {
+                            detect_barcodes(&file_name);
+                            fs::remove_file(&file_name).expect("Failed to remove file");
+                        });
+                        handles.push(handle);
                     }
                     _ => (),
                 }
             }
         }
     }
+
+    for handle in handles {
+        handle.join().expect("Thread panicked");
+    }
+
+    let elapsed = now.elapsed();
+    println!("Scanned files: {} took {:.2?}", count, elapsed);
 
     Ok(())
 }
