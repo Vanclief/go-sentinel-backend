@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
 	"image"
 	_ "image/jpeg"
@@ -167,7 +168,8 @@ func encode(cc *gmf.CodecCtx, frames []*gmf.Frame, drain int) {
 	}
 
 	for _, p := range packets {
-		writeFile(p.Data())
+		// writeFile(p.Data())
+		read_barcode(p.Data())
 		p.Free()
 	}
 
@@ -189,24 +191,14 @@ func writeFile(b []byte) {
 	}
 
 	fp.Close()
-	read_barcode(fp)
 	fileCount++
 }
 
-func open_read_barcode() {
-	// open and decode image file
-	file, err := os.Open("qr.png")
-	if err != nil {
-		panic(err)
-	}
+func read_barcode(b []byte) {
 
-	read_barcode(file)
+	reader := bytes.NewReader(b)
 
-}
-
-func read_barcode(file *os.File) {
-
-	img, _, err := image.Decode(file)
+	img, _, err := image.Decode(reader)
 	if err != nil {
 		fmt.Println("Image")
 		panic(err)
