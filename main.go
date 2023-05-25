@@ -40,7 +40,7 @@ func watch() {
 
 				if event.Op&fsnotify.Create == fsnotify.Create || event.Op&fsnotify.Write == fsnotify.Write {
 					if isImage(event.Name) {
-						fmt.Println("Scan frame", event.Name)
+						fmt.Println("Scan:", event.Name)
 						scan_image(event.Name)
 						os.Remove(event.Name)
 					}
@@ -105,7 +105,7 @@ func scan_image(path string) {
 		return
 	}
 
-	fmt.Println("===== QR SCANNED =====")
+	fmt.Println("===== QR FOUND =====")
 	fmt.Println(result)
 
 	// hints := make(map[gozxing.DecodeHintType]interface{})
