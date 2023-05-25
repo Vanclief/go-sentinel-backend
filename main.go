@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"image"
-	_ "image/jpeg"
 	_ "image/png"
 	"os"
 
@@ -19,6 +18,11 @@ import (
 )
 
 func main() {
+	// scan_image("./tmp/frame_3.png")
+	watch()
+}
+
+func watch() {
 	watcher, err := fsnotify.NewWatcher()
 	if err != nil {
 		log.Fatal(err)
@@ -33,10 +37,12 @@ func main() {
 				if !ok {
 					return
 				}
-				if event.Op&fsnotify.Create == fsnotify.Create {
-					log.Println("created file:", event.Name)
+
+				if event.Op&fsnotify.Create == fsnotify.Create || event.Op&fsnotify.Write == fsnotify.Write {
 					if isImage(event.Name) {
+						fmt.Println("Scan frame", event.Name)
 						scan_image(event.Name)
+						os.Remove(event.Name)
 					}
 				}
 			case err, ok := <-watcher.Errors:
@@ -48,7 +54,7 @@ func main() {
 		}
 	}()
 
-	err = watcher.Add("./mediamtx/")
+	err = watcher.Add("./tmp/")
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -70,32 +76,33 @@ func openImage(path string) {
 
 func scan_image(path string) {
 
-	fmt.Println("path", path)
+	// fmt.Println("path", path)
 
 	file, err := os.Open(path)
 	if err != nil {
-		fmt.Println("Open err", err)
-		panic(err)
+		// fmt.Println("Open err", err)
+		return
 	}
 
 	img, _, err := image.Decode(file)
 	if err != nil {
-		fmt.Println("Image")
-		panic(err)
+		// fmt.Println("Image err", err)
+		return
 	}
 
 	// prepare BinaryBitmap
 	bmp, err := gozxing.NewBinaryBitmapFromImage(img)
 	if err != nil {
-		fmt.Println("BinaryBitmap")
-		panic(err)
+		// fmt.Println("BinaryBitmap err", err)
+		return
 	}
 
 	// decode image
 	qrReader := qrcode.NewQRCodeMultiReader()
 	result, err := qrReader.DecodeMultipleWithoutHint(bmp)
 	if err != nil {
-		fmt.Println("QRReader Error", err)
+		// fmt.Println("QRReader Error", err)
+		return
 	}
 
 	fmt.Println("===== QR SCANNED =====")
