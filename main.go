@@ -21,12 +21,10 @@ func main() {
 
 	s := scanner.New(true, 10)
 
-	player.Play()
-	player.Play()
-
 	go func() {
 		for res := range s.ResultStream {
 			fmt.Println("Got result:", res)
+			player.Play()
 			// scanSound := buffer.Streamer(0, buffer.Len())
 			// speaker.Play(scanSound)
 			// Handle the result as needed
@@ -35,14 +33,13 @@ func main() {
 
 	ticker := time.NewTicker(500 * time.Millisecond)
 	for range ticker.C {
-		fmt.Println("Scan dir")
 		s.ScanDir("./tmp/")
 	}
 }
 
 type SoundPlayer struct {
-	Beep      beep.StreamSeeker
-	IsPlaying bool
+	Beep  beep.StreamSeeker
+	Queue chan bool
 }
 
 func New() *SoundPlayer {
@@ -70,13 +67,27 @@ func New() *SoundPlayer {
 	buffer.Append(streamer)
 	streamer.Close()
 
-	streamSeeker := buffer.Streamer(0, buffer.Len())
+	queue := make(chan bool)
+
+	go func() {
+		var isPlaying bool
+		for range queue {
+			if !isPlaying {
+				isPlaying = true
+				streamSeeker := buffer.Streamer(0, buffer.Len())
+				speaker.Play(beep.Seq(streamSeeker, beep.Callback(func() {
+					isPlaying = false
+				})))
+			}
+
+		}
+	}()
 
 	return &SoundPlayer{
-		Beep: streamSeeker,
+		Queue: queue,
 	}
 }
 
 func (s *SoundPlayer) Play() {
-	speaker.Play(s.Beep)
+	s.Queue <- true
 }
