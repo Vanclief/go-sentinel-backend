@@ -5,7 +5,6 @@ import (
 	"image"
 	_ "image/jpeg"
 	_ "image/png"
-	"io/ioutil"
 	"os"
 	"time"
 
@@ -32,7 +31,7 @@ func main() {
 
 func (s *Scanner) scanDir(scanner *Scanner, dir string) {
 
-	files, err := ioutil.ReadDir(dir)
+	files, err := os.ReadDir(dir)
 	if err != nil {
 		log.Fatal(err)
 	}
