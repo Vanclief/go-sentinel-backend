@@ -20,6 +20,7 @@ type Scanner struct {
 	DeleteOnScan bool
 	Semaphore    chan bool
 	ResultStream chan *gozxing.Result
+	Debug        bool
 }
 
 func New(deleteOnScan bool, maxGoroutines int) *Scanner {
@@ -69,8 +70,10 @@ func isImage(path string) bool {
 func (s *Scanner) ScanImage(path string) (*gozxing.Result, error) {
 	const op = "scanImage"
 
-	start := time.Now()
-	defer fmt.Println("Scanned:", path, "in", time.Since(start))
+	if s.Debug {
+		start := time.Now()
+		defer fmt.Println("Scanned:", path, "in", time.Since(start))
+	}
 
 	// load image
 	bmp, err := s.load_image(path)

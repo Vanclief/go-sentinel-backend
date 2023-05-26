@@ -1,93 +1,56 @@
 package main
 
 import (
+	"encoding/csv"
 	"fmt"
 	_ "image/jpeg"
 	_ "image/png"
+	"log"
 	"os"
 	"time"
 
-	"github.com/faiface/beep"
-	"github.com/faiface/beep/mp3"
-	"github.com/faiface/beep/speaker"
+	"github.com/vanclief/go-sentinel-backend/player"
 	"github.com/vanclief/go-sentinel-backend/scanner"
-
-	"log"
 )
 
 func main() {
 
-	player := New()
-
+	//
+	sound := player.New()
 	s := scanner.New(true, 10)
 
+	// Open the CSV file in append mode.
+	file, err := os.OpenFile("scanned.csv", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		log.Fatalf("Failed to open CSV file: %v", err)
+	}
+	defer file.Close()
+
+	// Create a CSV writer.
+	writer := csv.NewWriter(file)
+
+	// Channel for listening results
 	go func() {
-		for res := range s.ResultStream {
-			fmt.Println("Got result:", res)
-			player.Play()
-			// scanSound := buffer.Streamer(0, buffer.Len())
-			// speaker.Play(scanSound)
-			// Handle the result as needed
+		var lastResult string
+		for result := range s.ResultStream {
+			fmt.Println("Scanned:", result)
+			sound.Play()
+
+			if result.String() == lastResult {
+				continue
+			}
+
+			lastResult = result.String()
+			if err := writer.Write([]string{result.String()}); err != nil {
+				log.Fatalf("Failed to write to CSV file: %v", err)
+			}
+			writer.Flush()
 		}
 	}()
 
+	// Pooling to scan folder
 	ticker := time.NewTicker(500 * time.Millisecond)
 	for range ticker.C {
 		s.ScanDir("./tmp/")
 	}
-}
-
-type SoundPlayer struct {
-	Beep  beep.StreamSeeker
-	Queue chan bool
-}
-
-func New() *SoundPlayer {
-
-	f, err := os.Open("sounds/beep2.mp3")
-	if err != nil {
-		log.Fatal(err)
-		panic(err)
-	}
-
-	streamer, format, err := mp3.Decode(f)
-	if err != nil {
-		log.Fatal(err)
-		panic(err)
-	}
-
-	err = speaker.Init(format.SampleRate, format.SampleRate.N(time.Second/10))
-	if err != nil {
-		log.Fatal(err)
-		panic(err)
-	}
-
-	buffer := beep.NewBuffer(format)
-
-	buffer.Append(streamer)
-	streamer.Close()
-
-	queue := make(chan bool)
-
-	go func() {
-		var isPlaying bool
-		for range queue {
-			if !isPlaying {
-				isPlaying = true
-				streamSeeker := buffer.Streamer(0, buffer.Len())
-				speaker.Play(beep.Seq(streamSeeker, beep.Callback(func() {
-					isPlaying = false
-				})))
-			}
-
-		}
-	}()
-
-	return &SoundPlayer{
-		Queue: queue,
-	}
-}
-
-func (s *SoundPlayer) Play() {
-	s.Queue <- true
 }
