@@ -10,7 +10,9 @@ import (
 	"time"
 
 	"github.com/makiuchi-d/gozxing"
-	"github.com/makiuchi-d/gozxing/multi/qrcode"
+	"github.com/makiuchi-d/gozxing/oned"
+	"github.com/makiuchi-d/gozxing/qrcode"
+	"github.com/vanclief/ez"
 
 	"log"
 	"path/filepath"
@@ -18,15 +20,17 @@ import (
 )
 
 func main() {
-	// scan_image("./tmp/frame_1400.jpg")
-	// watch()
+
+	scanner := New(true)
+	// scanner.scan_image("./samples/upca-2/1.png")
+
 	ticker := time.NewTicker(500 * time.Millisecond)
 	for range ticker.C {
-		scanDir("./tmp/")
+		scanDir(scanner, "./tmp/")
 	}
 }
 
-func scanDir(dir string) {
+func scanDir(scanner *Scanner, dir string) {
 	files, err := ioutil.ReadDir(dir)
 	if err != nil {
 		log.Fatal(err)
@@ -38,112 +42,102 @@ func scanDir(dir string) {
 			continue
 		}
 
-		start := time.Now()
-		scan_image(path)
-		elapsed := time.Since(start)
-		fmt.Println("Scanned:", path, "in", elapsed)
+		go scanner.scan_image(path)
 	}
 }
-
-// func watch() {
-// 	watcher, err := fsnotify.NewWatcher()
-// 	if err != nil {
-// 		log.Fatal(err)
-// 	}
-// 	defer watcher.Close()
-
-// 	done := make(chan bool)
-// 	go func() {
-// 		for {
-// 			select {
-// 			case event, ok := <-watcher.Events:
-// 				if !ok {
-// 					return
-// 				}
-
-// 				if event.Op&fsnotify.Create == fsnotify.Create || event.Op&fsnotify.Write == fsnotify.Write {
-// 					if isImage(event.Name) {
-// 						fmt.Println("Scan:", event.Name)
-// 						scan_image(event.Name)
-// 						os.Remove(event.Name)
-// 					}
-// 				}
-// 			case err, ok := <-watcher.Errors:
-// 				if !ok {
-// 					return
-// 				}
-// 				log.Println("error:", err)
-// 			}
-// 		}
-// 	}()
-
-// 	err = watcher.Add("./tmp/")
-// 	if err != nil {
-// 		log.Fatal(err)
-// 	}
-// 	<-done
-// }
 
 func isImage(path string) bool {
 	ext := strings.ToLower(filepath.Ext(path))
 	return ext == ".png" || ext == ".jpg" || ext == ".jpeg" || ext == ".gif"
 }
 
-func scan_image(path string) {
+type Scanner struct {
+	QRReader     gozxing.Reader
+	OnedReader   gozxing.Reader
+	DeleteOnScan bool
+}
 
-	defer os.Remove(path)
+func New(deleteOnScan bool) *Scanner {
+	return &Scanner{
+		QRReader:     qrcode.NewQRCodeReader(),
+		OnedReader:   oned.NewMultiFormatUPCEANReader(nil),
+		DeleteOnScan: deleteOnScan,
+	}
+}
 
-	// fmt.Println("path", path)
+func (s *Scanner) scan_image(path string) error {
+	const op = "scan_image"
 
-	file, err := os.Open(path)
+	start := time.Now()
+	defer fmt.Println("Scanned:", path, "in", time.Since(start))
+
+	// load image
+	bmp, err := s.load_image(path)
 	if err != nil {
-		// fmt.Println("Open err", err)
-		return
+		return ez.Wrap(op, err)
 	}
 
-	img, _, err := image.Decode(file)
+	result, err := s.scan_qr(bmp)
 	if err != nil {
-		// fmt.Println("Image err", err)
-		return
-	}
-
-	// prepare BinaryBitmap
-	bmp, err := gozxing.NewBinaryBitmapFromImage(img)
-	if err != nil {
-		// fmt.Println("BinaryBitmap err", err)
-		return
-	}
-
-	// decode image
-	qrReader := qrcode.NewQRCodeMultiReader()
-	result, err := qrReader.DecodeMultipleWithoutHint(bmp)
-	if err != nil {
-		// fmt.Println("QRReader Error", err)
-		return
+		result, err = s.scan_barcode(bmp)
+		if err != nil {
+			return ez.Wrap(op, err)
+		}
 	}
 
 	fmt.Println("===== QR FOUND =====")
 	fmt.Println(result)
 
-	// hints := make(map[gozxing.DecodeHintType]interface{})
-	// possibleFormats := []gozxing.BarcodeFormat{
-	// 	gozxing.BarcodeFormat_EAN_13,
-	// 	gozxing.BarcodeFormat_EAN_8,
-	// 	gozxing.BarcodeFormat_UPC_A,
-	// 	gozxing.BarcodeFormat_UPC_E,
-	// 	gozxing.BarcodeFormat_CODE_39,
-	// 	gozxing.BarcodeFormat_CODE_93,
-	// 	gozxing.BarcodeFormat_CODE_128,
-	// }
-	//
-	// hints[gozxing.DecodeHintType_POSSIBLE_FORMATS] = possibleFormats
+	return nil
+}
 
-	// onedReader := oned.NewMultiFormatUPCEANReader(hints)
-	// onedReader := oned.NewMultiFormatUPCEANReader(nil)
-	// res2, err := onedReader.DecodeWithoutHints(bmp)
-	// if err != nil {
-	// 	fmt.Println("OnedReader Error", err)
-	// }
-	//
-	// fmt.Println(res2)
+func (s *Scanner) scan_barcode(bmp *gozxing.BinaryBitmap) (*gozxing.Result, error) {
+	const op = "scan_barcode"
+
+	result, err := s.OnedReader.DecodeWithoutHints(bmp)
+	if err != nil {
+		return nil, ez.Wrap(op, err)
+	}
+
+	return result, nil
+}
+
+func (s *Scanner) scan_qr(bmp *gozxing.BinaryBitmap) (*gozxing.Result, error) {
+	const op = "scan_qr"
+
+	// decode image
+	result, err := s.QRReader.DecodeWithoutHints(bmp)
+	if err != nil {
+		return nil, ez.Wrap(op, err)
+	}
+
+	return result, nil
+}
+
+func (s *Scanner) load_image(path string) (*gozxing.BinaryBitmap, error) {
+	const op = "load_image"
+
+	if s.DeleteOnScan {
+		defer os.Remove(path)
+	}
+
+	// fmt.Println("path", path)
+
+	file, err := os.Open(path)
+	if err != nil {
+		return nil, ez.Wrap(op, err)
+	}
+
+	img, _, err := image.Decode(file)
+	if err != nil {
+		return nil, ez.Wrap(op, err)
+	}
+
+	// prepare BinaryBitmap
+	bmp, err := gozxing.NewBinaryBitmapFromImage(img)
+	if err != nil {
+		return nil, ez.Wrap(op, err)
+	}
+
+	return bmp, nil
 }
