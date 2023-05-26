@@ -7,6 +7,7 @@ use std::sync::mpsc;
 use std::thread;
 use std::time::Duration;
 
+use chrono::{DateTime, Utc};
 use rxing;
 
 fn main() {
@@ -14,7 +15,10 @@ fn main() {
 
     let (_stream, stream_handle) = OutputStream::try_default().unwrap();
     let (tx, rx) = mpsc::channel();
-    let mut wtr = Writer::from_path("results.csv").unwrap();
+
+    let now: DateTime<Utc> = Utc::now();
+    let csvPath = format!("./results/{}.csv", now);
+    let mut wtr = Writer::from_path(csvPath).unwrap();
 
     println!("Scanning directory: {}", dir_path);
 
@@ -24,7 +28,9 @@ fn main() {
 
         for received in rx.try_iter() {
             println!("Received: {}", received);
-            wtr.write_record(&[received]);
+            let now: DateTime<Utc> = Utc::now();
+            let now_str = now.to_string();
+            wtr.write_record(&[&now_str, &received]);
             wtr.flush().unwrap();
 
             let file = BufReader::new(File::open("sounds/beep.mp3").unwrap());
