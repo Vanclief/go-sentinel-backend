@@ -13,12 +13,31 @@ import (
 	"github.com/makiuchi-d/gozxing/qrcode"
 	"github.com/vanclief/ez"
 
+	"github.com/faiface/beep/mp3"
+	"github.com/faiface/beep/speaker"
+
 	"log"
 	"path/filepath"
 	"strings"
 )
 
 func main() {
+
+	f, err := os.Open("sounds/beep2.mp3")
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	streamer, format, err := mp3.Decode(f)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	defer streamer.Close()
+
+	speaker.Init(format.SampleRate, format.SampleRate.N(time.Second/10))
+
+	speaker.Play(streamer)
 
 	scanner := New(true, 10)
 	// scanner.scanImage("./samples/upca-2/1.png")
