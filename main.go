@@ -21,16 +21,17 @@ import (
 
 func main() {
 
-	scanner := New(true)
-	// scanner.scan_image("./samples/upca-2/1.png")
+	scanner := New(true, 10)
+	// scanner.scanImage("./samples/upca-2/1.png")
 
 	ticker := time.NewTicker(500 * time.Millisecond)
 	for range ticker.C {
-		scanDir(scanner, "./tmp/")
+		scanner.scanDir(scanner, "./tmp/")
 	}
 }
 
-func scanDir(scanner *Scanner, dir string) {
+func (s *Scanner) scanDir(scanner *Scanner, dir string) {
+
 	files, err := ioutil.ReadDir(dir)
 	if err != nil {
 		log.Fatal(err)
@@ -42,7 +43,12 @@ func scanDir(scanner *Scanner, dir string) {
 			continue
 		}
 
-		go scanner.scan_image(path)
+		s.Semaphore <- true
+
+		go func(path string) {
+			defer func() { <-s.Semaphore }()
+			scanner.scanImage(path)
+		}(path)
 	}
 }
 
@@ -52,21 +58,24 @@ func isImage(path string) bool {
 }
 
 type Scanner struct {
+	Semaphore    chan bool
 	QRReader     gozxing.Reader
 	OnedReader   gozxing.Reader
 	DeleteOnScan bool
 }
 
-func New(deleteOnScan bool) *Scanner {
+func New(deleteOnScan bool, maxGoroutines int) *Scanner {
+
 	return &Scanner{
+		Semaphore:    make(chan bool, maxGoroutines),
 		QRReader:     qrcode.NewQRCodeReader(),
 		OnedReader:   oned.NewMultiFormatUPCEANReader(nil),
 		DeleteOnScan: deleteOnScan,
 	}
 }
 
-func (s *Scanner) scan_image(path string) error {
-	const op = "scan_image"
+func (s *Scanner) scanImage(path string) error {
+	const op = "scanImage"
 
 	start := time.Now()
 	defer fmt.Println("Scanned:", path, "in", time.Since(start))
@@ -77,9 +86,9 @@ func (s *Scanner) scan_image(path string) error {
 		return ez.Wrap(op, err)
 	}
 
-	result, err := s.scan_qr(bmp)
+	result, err := s.scanQR(bmp)
 	if err != nil {
-		result, err = s.scan_barcode(bmp)
+		result, err = s.scanBarcode(bmp)
 		if err != nil {
 			return ez.Wrap(op, err)
 		}
@@ -91,8 +100,8 @@ func (s *Scanner) scan_image(path string) error {
 	return nil
 }
 
-func (s *Scanner) scan_barcode(bmp *gozxing.BinaryBitmap) (*gozxing.Result, error) {
-	const op = "scan_barcode"
+func (s *Scanner) scanBarcode(bmp *gozxing.BinaryBitmap) (*gozxing.Result, error) {
+	const op = "scanBarcode"
 
 	result, err := s.OnedReader.DecodeWithoutHints(bmp)
 	if err != nil {
@@ -102,8 +111,8 @@ func (s *Scanner) scan_barcode(bmp *gozxing.BinaryBitmap) (*gozxing.Result, erro
 	return result, nil
 }
 
-func (s *Scanner) scan_qr(bmp *gozxing.BinaryBitmap) (*gozxing.Result, error) {
-	const op = "scan_qr"
+func (s *Scanner) scanQR(bmp *gozxing.BinaryBitmap) (*gozxing.Result, error) {
+	const op = "scanQR"
 
 	// decode image
 	result, err := s.QRReader.DecodeWithoutHints(bmp)
