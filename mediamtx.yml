@@ -442,7 +442,7 @@ paths:
     # * RTSP_PORT: server port
     # * G1, G2, ...: regular expression groups, if path name is
     #   a regular expression.
-    runOnReady: ffmpeg -i rtmp://localhost:1935/dji -vf fps=10 tmp/frame_%d.png
+    runOnReady: ffmpeg -i rtmp://localhost:1935/dji -vf fps=12 tmp/frame_%d.jpg
  
     # Restart the command if it exits suddenly.
     runOnReadyRestart: yes

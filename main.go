@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"image"
+	_ "image/jpeg"
 	_ "image/png"
 	"io/ioutil"
 	"os"
@@ -17,7 +18,7 @@ import (
 )
 
 func main() {
-	// scan_image("./tmp/frame_3.png")
+	// scan_image("./tmp/frame_1400.jpg")
 	// watch()
 	ticker := time.NewTicker(500 * time.Millisecond)
 	for range ticker.C {
