@@ -81,9 +81,9 @@ func (s *Scanner) ScanImage(path string) (*gozxing.Result, error) {
 		return nil, ez.Wrap(op, err)
 	}
 
-	result, err := s.scanQR(bmp)
+	result, err := s.scanBarcode(bmp)
 	if err != nil {
-		result, err = s.scanBarcode(bmp)
+		result, err = s.scanQR(bmp)
 		if err != nil {
 			return nil, ez.Wrap(op, err)
 		}
